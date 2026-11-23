@@ -152,6 +152,7 @@ def registrar_interaccion_auditoria(
     metricas: dict[str, Any],
     caso_id: str | None = None,
     archivo_log: Path | None = None,
+    alertas_extra: list[str] | None = None,
 ) -> dict[str, Any]:
     """
     Guarda un registro de auditoría completo de la interacción en formato JSONL (Regla 8)
@@ -162,6 +163,9 @@ def registrar_interaccion_auditoria(
     ahora_utc = datetime.now(timezone.utc).isoformat()
     interaccion_id = f"INT-{uuid.uuid4().hex[:10].upper()}"
     alertas = _extraer_alertas(herramientas_usadas)
+    for a in alertas_extra or []:
+        if a and a not in alertas:
+            alertas.append(str(a))
 
     registro = {
         "interaccion_id": interaccion_id,

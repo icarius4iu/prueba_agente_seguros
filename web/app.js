@@ -299,6 +299,16 @@
   // =========================================================================
   // Renderizado de mensajes de chat (compartido Cliente / Asesor)
   // =========================================================================
+  function etiquetaAlerta(alertas) {
+    const joined = (alertas || []).join(" ").toUpperCase();
+    if (joined.includes("INDIRECTO")) return "⚠ Prompt Injection Indirecto";
+    if (joined.includes("PROMPT_INJECTION_DIRECTO")) return "⚠ Prompt Injection Directo";
+    if (joined.includes("SUPLANTACION_IDENTIDAD")) return "⚠ Suplantación / Ing. Social";
+    if (joined.includes("MODIFICACION_NO_AUTORIZADA")) return "⚠ Modificación no autorizada";
+    if (joined.includes("ACCESO_TERCEROS")) return "⚠ Acceso a terceros";
+    return "⚠ Alerta de seguridad";
+  }
+
   function appendMessage(container, { sender, text, herramientas, alertas, metricas }) {
     const div = document.createElement("div");
     div.className = `msg ${sender === "user" ? "msg-user" : "msg-bot"}`;
@@ -308,7 +318,7 @@
     } else {
       let html = renderMarkdown(text);
       if (alertas && alertas.length > 0) {
-        html += `<div class="msg-alert"><strong>🛡 Defensa activa:</strong> Se detectó y neutralizó un intento de Prompt Injection indirecto en datos no confiables.</div>`;
+        html += `<div class="msg-alert"><strong>🛡 Control de seguridad (${escapeHtml(etiquetaAlerta(alertas).replace(/^⚠\s*/, ""))}):</strong> Evento registrado en auditoría.</div>`;
       }
       if ((herramientas && herramientas.length) || metricas) {
         const lat = metricas ? `${metricas.latencia_ms || 0} ms` : "";
@@ -572,7 +582,7 @@
             <span>
               <span class="pill ${sesion.rol === "cliente" ? "pill-ok" : "pill-neutral"}">${escapeHtml(sesion.rol)}</span>
               <strong>${escapeHtml(sesion.usuario_id)}</strong>
-              ${hasAlert ? `<span class="pill pill-danger">⚠ Prompt Injection</span>` : ""}
+              ${hasAlert ? `<span class="pill pill-danger">${escapeHtml(etiquetaAlerta(c.alertas_seguridad))}</span>` : ""}
             </span>
             <span class="muted">${escapeHtml(formatDateShort(c.timestamp_utc))}</span>
           </div>
