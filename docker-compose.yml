@@ -1,0 +1,20 @@
+services:
+  agente-seguros:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agente_seguros_horizonte
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - DB_BACKEND=${DB_BACKEND:-duckdb}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.8-flash}
+    volumes:
+      - ./datos:/app/datos:ro
+      - ./condicionados:/app/condicionados:ro
+      - ./casos_prueba:/app/casos_prueba:ro
+      - ./salidas:/app/salidas
+      - ./RESULTADOS.md:/app/RESULTADOS.md
+    stdin_open: true
+    tty: true

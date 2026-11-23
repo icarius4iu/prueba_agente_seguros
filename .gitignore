@@ -221,3 +221,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Variables de entorno y logs temporales
+.env
+salidas/logs/
