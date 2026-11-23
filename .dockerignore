@@ -1,0 +1,13 @@
+.git
+.gitignore
+.env
+creds/
+*bq-sa*.json
+__pycache__/
+*.pyc
+.venv/
+salidas/logs/
+*.md
+!condicionados/*.md
+!datos/*.md
+ENUNCIADO.pdf

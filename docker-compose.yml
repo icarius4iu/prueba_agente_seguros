@@ -1,20 +1,46 @@
 services:
-  agente-seguros:
+  pwa:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: agente_seguros_horizonte
+    container_name: agente_seguros_pwa
+    ports:
+      - "${PORT:-8080}:8080"
     env_file:
       - path: .env
         required: false
     environment:
+      - PORT=8080
       - DB_BACKEND=${DB_BACKEND:-duckdb}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.8-flash}
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID:-}
+      - BIGQUERY_DATASET=${BIGQUERY_DATASET:-seguros_horizonte}
+      - BIGQUERY_LOGS_DATASET=${BIGQUERY_LOGS_DATASET:-seguros_horizonte_logs}
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-}
+    volumes:
+      - ./datos:/app/datos:ro
+      - ./condicionados:/app/condicionados:ro
+      - ./salidas:/app/salidas
+      - ./creds:/app/creds:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  evaluacion:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agente_seguros_eval
+    profiles: ["eval"]
+    env_file:
+      - path: .env
+        required: false
+    command: ["sh", "-c", "python run_casos.py && python evaluar.py"]
     volumes:
       - ./datos:/app/datos:ro
       - ./condicionados:/app/condicionados:ro
       - ./casos_prueba:/app/casos_prueba:ro
       - ./salidas:/app/salidas
       - ./RESULTADOS.md:/app/RESULTADOS.md
-    stdin_open: true
-    tty: true

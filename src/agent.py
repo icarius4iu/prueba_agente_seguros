@@ -293,7 +293,7 @@ class AgenteSeguros:
                 {
                     "consulta_sql": (
                         "SELECT s.clausula_referencia, COUNT(*) AS cantidad, "
-                        " LIST(s.siniestro_id) AS siniestros_ids, MIN(s.motivo_rechazo) AS ejemplo_motivo "
+                        "STRING_AGG(s.siniestro_id, ', ') AS siniestros_ids, MIN(s.motivo_rechazo) AS ejemplo_motivo "
                         "FROM siniestros s JOIN polizas p ON s.poliza_id = p.poliza_id "
                         "WHERE p.ramo = 'vehicular' AND s.estado = 'rechazado' "
                         "AND s.fecha_ocurrencia BETWEEN '2026-07-01' AND '2026-09-30' "

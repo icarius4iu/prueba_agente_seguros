@@ -222,6 +222,8 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Variables de entorno y logs temporales
+# Variables de entorno, credenciales GCP y logs temporales
 .env
+creds/
+*bq-sa*.json
 salidas/logs/

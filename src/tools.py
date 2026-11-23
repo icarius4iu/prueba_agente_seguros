@@ -16,8 +16,11 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from src.condicionados import obtener_buscador
+from src.config import DB_BACKEND
 from src.database import DataRepository, obtener_repositorio
 from src.logger import registrar_ticket_escalamiento
+
+_DIALECTO_SQL = "GoogleSQL (BigQuery Standard SQL)" if DB_BACKEND == "bigquery" else "DuckDB"
 
 
 @dataclass
@@ -133,7 +136,7 @@ DECLARACIONES_HERRAMIENTAS_GEMINI: list[dict[str, Any]] = [
     {
         "name": "consultar_datos_sql",
         "description": (
-            "Ejecuta una consulta SQL de SOLO LECTURA (SELECT) en DuckDB sobre las vistas "
+            f"Ejecuta una consulta SQL de SOLO LECTURA (SELECT) en {_DIALECTO_SQL} sobre las vistas "
             "`clientes`, `polizas`, `siniestros` y `asesores`. "
             "IMPORTANTE: Si el usuario autenticado tiene rol 'cliente', las vistas ya están "
             "filtradas automáticamente por seguridad (Row-Level Security) para devolver únicamente "
@@ -146,8 +149,9 @@ DECLARACIONES_HERRAMIENTAS_GEMINI: list[dict[str, Any]] = [
                 "consulta_sql": {
                     "type": "STRING",
                     "description": (
-                        "Sentencia SQL SELECT válida en DuckDB usando las tablas `clientes`, `polizas`, "
-                        "`siniestros` o `asesores`. No uses funciones read_csv_auto ni punto y coma múltiple. "
+                        f"Sentencia SQL SELECT válida en {_DIALECTO_SQL} usando los nombres de tabla sin calificar "
+                        "`clientes`, `polizas`, `siniestros` o `asesores`. No uses funciones read_csv_auto ni punto y coma múltiple. "
+                        "Usa STRING_AGG en vez de LIST si necesitas concatenar IDs. "
                         "Columnas clave: "
                         "clientes(cliente_id, nombres, apellidos, dni, fecha_nacimiento, distrito, telefono, email, fecha_alta); "
                         "polizas(poliza_id, cliente_id, ramo, producto, fecha_inicio, fecha_fin, prima_mensual_soles, suma_asegurada_soles, deducible_soles, estado, placa_vehiculo); "

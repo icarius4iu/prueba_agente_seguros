@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1f3a" />
+  <meta name="description" content="Asistente Virtual de Pólizas y Siniestros — Seguros Horizonte S.A." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg" />
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
+  <link rel="stylesheet" href="/static/styles.css" />
+  <title>Seguros Horizonte S.A. — Asistente Virtual PWA</title>
+</head>
+<body>
+  <!-- ===================================================================== -->
+  <!-- VISTA 1: LOGIN DUAL (CLIENTE / ASESOR)                                -->
+  <!-- ===================================================================== -->
+  <main id="view-login" class="login-shell">
+    <div class="login-card">
+      <div class="brand-header">
+        <img src="/static/icons/icon.svg" alt="Seguros Horizonte" class="brand-logo" />
+        <div>
+          <h1>Seguros Horizonte S.A.</h1>
+          <p class="subtitle">Asistente Inteligente de Pólizas y Siniestros</p>
+        </div>
+      </div>
+
+      <div id="infra-banner" class="infra-banner">
+        <span class="dot dot-loading"></span>
+        <span>Verificando conexión de datos e IA...</span>
+      </div>
+
+      <div class="role-tabs" role="tablist">
+        <button id="tab-login-cliente" class="role-tab active" data-target="form-cliente" role="tab">
+          Soy Cliente
+        </button>
+        <button id="tab-login-asesor" class="role-tab" data-target="form-asesor" role="tab">
+          Soy Asesor / Admin
+        </button>
+      </div>
+
+      <!-- Formulario Cliente -->
+      <form id="form-cliente" class="auth-form">
+        <div class="field">
+          <label for="input-dni">DNI del titular</label>
+          <input id="input-dni" type="text" inputmode="numeric" placeholder="Ej. 41827365" autocomplete="off" required />
+        </div>
+        <div class="field">
+          <label for="input-nombre">Nombre completo</label>
+          <input id="input-nombre" type="text" placeholder="Ej. Ana Lucía Torres Vega" autocomplete="off" required />
+        </div>
+        <div id="error-cliente" class="form-error hidden"></div>
+        <button type="submit" class="btn btn-primary btn-full" id="btn-submit-cliente">
+          Ingresar al Portal Cliente
+        </button>
+
+        <div class="demo-box">
+          <p class="demo-title">Accesos rápidos de prueba (clientes sintéticos)</p>
+          <div class="demo-chips">
+            <button type="button" class="chip-demo" data-dni="41827365" data-nombre="Ana Lucía Torres Vega">
+              C001 · Ana Torres (Vehicular)
+            </button>
+            <button type="button" class="chip-demo" data-dni="45672819" data-nombre="Luis Alberto Quispe Mamani">
+              C002 · Luis Quispe (Auto Total)
+            </button>
+            <button type="button" class="chip-demo" data-dni="46281937" data-nombre="Rosa María Huamán Ccori">
+              C005 · Rosa Huamán (Salud)
+            </button>
+            <button type="button" class="chip-demo" data-dni="41093827" data-nombre="Carmen Rosa Rojas Delgado">
+              C008 · Carmen Rojas (Multi-póliza)
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <!-- Formulario Asesor / Admin -->
+      <form id="form-asesor" class="auth-form hidden">
+        <div class="field">
+          <label for="input-asesor">ID de Asesor o correo corporativo</label>
+          <input id="input-asesor" type="text" placeholder="Ej. ASE01 o mvillanueva@seguroshorizonte-ficticio.pe" autocomplete="off" required />
+        </div>
+        <div id="error-asesor" class="form-error hidden"></div>
+        <button type="submit" class="btn btn-primary btn-full" id="btn-submit-asesor">
+          Ingresar al Panel Asesor / Admin
+        </button>
+
+        <div class="demo-box">
+          <p class="demo-title">Asesores registrados en base de datos</p>
+          <div class="demo-chips">
+            <button type="button" class="chip-demo-asesor" data-asesor="ASE01">
+              ASE01 · Mónica Villanueva
+            </button>
+            <button type="button" class="chip-demo-asesor" data-asesor="ASE02">
+              ASE02 · Álvaro Pinedo
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <div class="security-note">
+        <strong>Seguridad por diseño:</strong> Este login de demostración valida contra la base real
+        (BigQuery / DuckDB) y emite una <strong>cookie firmada HttpOnly</strong>. La identidad y el
+        aislamiento <em>Row-Level Security</em> se aplican en servidor. En producción se sustituye por OAuth2/OIDC + MFA.
+      </div>
+    </div>
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- VISTA 2: PORTAL CLIENTE (PWA CHAT + MIS PÓLIZAS)                      -->
+  <!-- ===================================================================== -->
+  <section id="view-cliente" class="app-shell hidden">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button id="btn-toggle-sidebar" class="btn-icon mobile-only" title="Mis pólizas">☰</button>
+        <img src="/static/icons/icon.svg" alt="" class="topbar-logo" />
+        <div>
+          <div class="topbar-title">Seguros Horizonte</div>
+          <div id="cliente-subtitulo" class="topbar-sub">Portal Cliente</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <span id="cliente-backend-pill" class="pill pill-infra">DB</span>
+        <button id="btn-install-cliente" class="btn btn-accent btn-sm hidden">Instalar App</button>
+        <button id="btn-logout-cliente" class="btn btn-ghost btn-sm">Salir</button>
+      </div>
+    </header>
+
+    <div class="client-layout">
+      <aside id="cliente-sidebar" class="sidebar">
+        <div class="sidebar-header">
+          <h2>Mi Resumen</h2>
+          <button id="btn-close-sidebar" class="btn-icon mobile-only">✕</button>
+        </div>
+        <div id="cliente-perfil-card" class="profile-card"></div>
+
+        <div class="sidebar-section">
+          <h3>Mis Pólizas</h3>
+          <div id="lista-polizas" class="card-list">
+            <p class="muted">Cargando pólizas...</p>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <h3>Mis Siniestros</h3>
+          <div id="lista-siniestros" class="card-list">
+            <p class="muted">Cargando siniestros...</p>
+          </div>
+        </div>
+      </aside>
+
+      <div class="chat-panel">
+        <div id="cliente-messages" class="chat-messages"></div>
+
+        <div class="quick-prompts" id="cliente-quick-prompts">
+          <button type="button" class="prompt-chip" data-prompt="¿Cuánto me cubre mi seguro?">
+            ¿Cuánto me cubre mi seguro?
+          </button>
+          <button type="button" class="prompt-chip" data-prompt="¿Cuál es el estado de mis siniestros registrados?">
+            Estado de mis siniestros
+          </button>
+          <button type="button" class="prompt-chip" data-prompt="¿Me puedes decir el estado del seguro de vida de mi esposo Carlos Mendoza con DNI 48120934?">
+            Prueba privacidad (CP-06)
+          </button>
+          <button type="button" class="prompt-chip" data-prompt="Tengo S/ 20,000 ahorrados, ¿me conviene el seguro de vida con ahorro o un fondo mutuo?">
+            Prueba escalamiento (CP-07)
+          </button>
+        </div>
+
+        <form id="cliente-chat-form" class="chat-composer">
+          <textarea
+            id="cliente-chat-input"
+            rows="1"
+            placeholder="Escribe tu consulta sobre pólizas, coberturas o siniestros..."
+            required
+          ></textarea>
+          <button type="submit" class="btn btn-primary" id="cliente-send-btn">Enviar</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- VISTA 3: PORTAL ASESOR / ADMIN                                        -->
+  <!-- ===================================================================== -->
+  <section id="view-asesor" class="app-shell hidden">
+    <header class="topbar">
+      <div class="topbar-left">
+        <img src="/static/icons/icon.svg" alt="" class="topbar-logo" />
+        <div>
+          <div class="topbar-title">Panel Asesor / Admin</div>
+          <div id="asesor-subtitulo" class="topbar-sub">Seguros Horizonte S.A.</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <span id="asesor-backend-pill" class="pill pill-infra">DB</span>
+        <button id="btn-refresh-admin" class="btn btn-ghost btn-sm">↻ Actualizar</button>
+        <button id="btn-install-asesor" class="btn btn-accent btn-sm hidden">Instalar App</button>
+        <button id="btn-logout-asesor" class="btn btn-ghost btn-sm">Salir</button>
+      </div>
+    </header>
+
+    <div class="admin-body">
+      <div id="admin-kpis" class="kpi-grid">
+        <div class="kpi-card"><span class="kpi-label">Interacciones</span><strong id="kpi-total">—</strong></div>
+        <div class="kpi-card"><span class="kpi-label">Clientes atendidos</span><strong id="kpi-clientes">—</strong></div>
+        <div class="kpi-card"><span class="kpi-label">Tickets escalados</span><strong id="kpi-tickets">—</strong></div>
+        <div class="kpi-card kpi-warn"><span class="kpi-label">Alertas seguridad</span><strong id="kpi-alertas">—</strong></div>
+        <div class="kpi-card"><span class="kpi-label">Latencia media</span><strong id="kpi-latencia">—</strong></div>
+        <div class="kpi-card"><span class="kpi-label">Costo IA (USD)</span><strong id="kpi-costo">—</strong></div>
+      </div>
+
+      <nav class="admin-tabs" role="tablist">
+        <button class="admin-tab active" data-panel="panel-chats">Monitor de Chats</button>
+        <button class="admin-tab" data-panel="panel-tickets">Tickets de Escalamiento</button>
+        <button class="admin-tab" data-panel="panel-asistente">Asistente IA (Modo Asesor)</button>
+      </nav>
+
+      <!-- Pestaña 1: Monitor de Chats de Clientes -->
+      <div id="panel-chats" class="admin-panel">
+        <div class="filter-bar">
+          <input id="filtro-buscar" type="search" placeholder="Buscar texto, cliente o respuesta..." />
+          <select id="filtro-rol">
+            <option value="">Todos los roles</option>
+            <option value="cliente" selected>Solo Clientes</option>
+            <option value="asesor">Solo Asesores</option>
+          </select>
+          <input id="filtro-usuario" type="text" placeholder="ID usuario (ej. C001)" class="input-sm" />
+          <label class="checkbox-inline">
+            <input id="filtro-alertas" type="checkbox" />
+            <span>Solo alertas Prompt Injection</span>
+          </label>
+          <button id="btn-aplicar-filtros" class="btn btn-primary btn-sm">Filtrar</button>
+        </div>
+
+        <div class="monitor-split">
+          <div id="lista-chats-admin" class="chat-audit-list">
+            <p class="muted">Cargando historial de conversaciones...</p>
+          </div>
+          <div id="detalle-chat-admin" class="chat-audit-detail">
+            <p class="muted">Selecciona una conversación para inspeccionar su trazabilidad completa (SQL, condicionados, alertas y métricas).</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pestaña 2: Tickets de Escalamiento -->
+      <div id="panel-tickets" class="admin-panel hidden">
+        <div id="lista-tickets-admin" class="tickets-grid">
+          <p class="muted">Cargando tickets...</p>
+        </div>
+      </div>
+
+      <!-- Pestaña 3: Asistente IA en Modo Asesor -->
+      <div id="panel-asistente" class="admin-panel hidden">
+        <div class="chat-panel chat-panel-admin">
+          <div id="asesor-messages" class="chat-messages"></div>
+
+          <div class="quick-prompts">
+            <button type="button" class="prompt-chip-asesor" data-prompt="¿Cuántos siniestros vehiculares fueron rechazados en el tercer trimestre de 2026 y cuáles son los motivos más frecuentes?">
+              Rechazos vehiculares Q3 2026 (CP-08)
+            </button>
+            <button type="button" class="prompt-chip-asesor" data-prompt="Muéstrame el resumen de siniestros en evaluación y su monto reclamado total por ramo.">
+              Siniestros en evaluación por ramo
+            </button>
+            <button type="button" class="prompt-chip-asesor" data-prompt="¿Qué clientes tienen pólizas vencidas actualmente?">
+              Clientes con pólizas vencidas
+            </button>
+          </div>
+
+          <form id="asesor-chat-form" class="chat-composer">
+            <textarea
+              id="asesor-chat-input"
+              rows="1"
+              placeholder="Consulta datos agregados, clientes específicos o normativa como Asesor..."
+              required
+            ></textarea>
+            <button type="submit" class="btn btn-primary" id="asesor-send-btn">Consultar</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
