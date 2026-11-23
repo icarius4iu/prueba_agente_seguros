@@ -9,6 +9,7 @@ Buscador de Condicionados y Tickets) si aún no se ha configurado `GEMINI_API_KE
 
 from __future__ import annotations
 
+import logging
 import re
 import time
 from pathlib import Path
@@ -17,13 +18,22 @@ from typing import Any
 from google import genai
 from google.genai import types
 
-from src.config import FECHA_REFERENCIA, GEMINI_API_KEY, GEMINI_MODEL
+from src.config import (
+    FECHA_REFERENCIA,
+    GCP_LOCATION,
+    GCP_PROJECT_ID,
+    GEMINI_API_KEY,
+    GEMINI_MODEL,
+    USE_VERTEX_AI,
+)
 from src.logger import registrar_interaccion_auditoria
 from src.tools import (
     DECLARACIONES_HERRAMIENTAS_GEMINI,
     ContextoSesion,
     ejecutar_herramienta,
 )
+
+logger = logging.getLogger(__name__)
 
 # Precios referenciales de Gemini 2.5 Flash por millón de tokens (USD) para estimación de costos
 COSTO_INPUT_POR_1M_USD = 0.15
@@ -83,19 +93,55 @@ def construir_system_prompt(rol: str, usuario_id: str) -> str:
 
 
 class AgenteSeguros:
-    """Agente conversacional con soporte de herramientas sobre Google Gemini y modo de respaldo local."""
+    """
+    Agente conversacional con soporte de herramientas sobre Google GenAI SDK:
+    - Modo producción (Vertex AI / IAM Workload Identity): sin API keys estáticas (`USE_VERTEX_AI=true`).
+    - Modo desarrollador (Google AI Studio): con `GEMINI_API_KEY`.
+    - Modo respaldo local: ejecuta herramientas reales si no hay credenciales configuradas.
+    """
 
     def __init__(
         self,
         api_key: str | None = None,
         model_name: str | None = None,
         max_iteraciones: int = 6,
+        use_vertex_ai: bool | None = None,
+        gcp_project_id: str | None = None,
+        gcp_location: str | None = None,
     ) -> None:
         self.api_key = (api_key if api_key is not None else GEMINI_API_KEY).strip()
         self.model_name = (model_name or GEMINI_MODEL).strip()
         self.max_iteraciones = max_iteraciones
-        self.modo_online = bool(self.api_key and self.api_key != "tu_api_key_aqui")
-        self.client = genai.Client(api_key=self.api_key) if self.modo_online else None
+        self.use_vertex_ai = USE_VERTEX_AI if use_vertex_ai is None else use_vertex_ai
+        self.gcp_project_id = (
+            gcp_project_id if gcp_project_id is not None else GCP_PROJECT_ID
+        ).strip()
+        self.gcp_location = (
+            gcp_location if gcp_location is not None else GCP_LOCATION
+        ).strip()
+
+        self.client: genai.Client | None = None
+        self.ai_provider: str = "local_fallback"
+        self.modo_online: bool = False
+        self.init_error: str | None = None
+
+        if self.use_vertex_ai and self.gcp_project_id:
+            try:
+                self.client = genai.Client(
+                    vertexai=True,
+                    project=self.gcp_project_id,
+                    location=self.gcp_location,
+                )
+                self.ai_provider = "vertex_ai"
+                self.modo_online = True
+            except Exception as exc:
+                self.init_error = f"Vertex AI init error: {exc}"
+                logger.warning("No se pudo inicializar Vertex AI (%s); evaluando respaldo.", exc)
+
+        if not self.modo_online and self.api_key and self.api_key != "tu_api_key_aqui":
+            self.client = genai.Client(api_key=self.api_key)
+            self.ai_provider = "gemini_api"
+            self.modo_online = True
 
     def _llamar_modelo_con_reintento(
         self,
@@ -105,7 +151,8 @@ class AgenteSeguros:
     ) -> types.GenerateContentResponse:
         """
         Invoca `client.models.generate_content` con manejo automático de límites de cuota
-        (HTTP 429 / RESOURCE_EXHAUSTED habitual en el nivel gratuito de Google AI Studio).
+        (HTTP 429 / RESOURCE_EXHAUSTED) y respaldo de modelo GA en Vertex AI si un modelo
+        preview no está disponible en la región configurada.
         """
         assert self.client is not None
         ultimo_error: Exception | None = None
@@ -119,7 +166,19 @@ class AgenteSeguros:
             except Exception as exc:
                 ultimo_error = exc
                 mensaje_err = str(exc)
-                # Si la clave nueva de AI Studio requiere gemini-3.8-flash en lugar de un modelo anterior
+                # Si el modelo no existe en la región de Vertex AI (404 NOT_FOUND), caer a gemini-2.5-flash (GA)
+                if (
+                    ("404" in mensaje_err or "NOT_FOUND" in mensaje_err.upper())
+                    and self.ai_provider == "vertex_ai"
+                    and self.model_name != "gemini-2.5-flash"
+                ):
+                    logger.warning(
+                        "Modelo '%s' no disponible en Vertex AI (%s). Usando 'gemini-2.5-flash'.",
+                        self.model_name,
+                        self.gcp_location,
+                    )
+                    self.model_name = "gemini-2.5-flash"
+                    continue
                 if "404" in mensaje_err and "gemini-3.8-flash" in mensaje_err and self.model_name != "gemini-3.8-flash":
                     self.model_name = "gemini-3.8-flash"
                     continue
@@ -752,7 +811,9 @@ class AgenteSeguros:
         )
 
         metricas = {
-            "modelo": modelo_usado,
+            "modelo": self.model_name if self.modo_online else modelo_usado,
+            "proveedor_ia": self.ai_provider,
+            "ubicacion_gcp": self.gcp_location if self.ai_provider == "vertex_ai" else None,
             "latencia_ms": latencia_ms,
             "tokens_entrada": tokens_entrada,
             "tokens_salida": tokens_salida,

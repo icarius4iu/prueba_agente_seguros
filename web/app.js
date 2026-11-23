@@ -167,14 +167,20 @@
       const backendLabel = h.db_backend === "bigquery"
         ? `BigQuery (${h.gcp_project || "GCP"}:${h.dataset})`
         : "DuckDB Local";
-      const aiLabel = h.modo_online ? `${h.modelo} Online` : "Motor local (sin GEMINI_API_KEY)";
+      const aiLabel = h.ai_provider === "vertex_ai"
+        ? `Vertex AI IAM (${h.gcp_location || "us-central1"} · ${h.modelo})`
+        : h.modo_online
+          ? `${h.modelo} (AI Studio)`
+          : "Motor local (sin credenciales IA)";
       const ok = h.db && h.db.ok;
 
       $("infra-banner").innerHTML = `
         <span class="dot ${ok ? "dot-ok" : "dot-warn"}"></span>
         <span><strong>${escapeHtml(backendLabel)}</strong> · ${escapeHtml(aiLabel)}</span>
       `;
-      const pillText = h.db_backend === "bigquery" ? "BigQuery" : "DuckDB";
+      const pillText = h.ai_provider === "vertex_ai"
+        ? `${h.db_backend === "bigquery" ? "BigQuery" : "DuckDB"} · Vertex AI`
+        : (h.db_backend === "bigquery" ? "BigQuery" : "DuckDB");
       $("cliente-backend-pill").textContent = pillText;
       $("asesor-backend-pill").textContent = pillText;
     } catch (err) {

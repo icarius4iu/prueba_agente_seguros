@@ -12,8 +12,10 @@ services:
     environment:
       - PORT=8080
       - DB_BACKEND=${DB_BACKEND:-duckdb}
-      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.8-flash}
+      - USE_VERTEX_AI=${USE_VERTEX_AI:-false}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
       - GCP_PROJECT_ID=${GCP_PROJECT_ID:-}
+      - GCP_LOCATION=${GCP_LOCATION:-us-central1}
       - BIGQUERY_DATASET=${BIGQUERY_DATASET:-seguros_horizonte}
       - BIGQUERY_LOGS_DATASET=${BIGQUERY_LOGS_DATASET:-seguros_horizonte_logs}
       - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-}

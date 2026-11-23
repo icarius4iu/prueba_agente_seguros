@@ -35,29 +35,37 @@ gcloud iam service-accounts create "${SA_NAME}" \
 # Esperar breve propagación de IAM tras crear una cuenta de servicio nueva
 sleep 8
 
-echo "==> 4. Aplicando IAM de mínimo privilegio:"
+echo "==> 4. Habilitando Vertex AI y aplicando IAM de mínimo privilegio:"
+gcloud services enable aiplatform.googleapis.com --project="${PROJECT_ID}" >/dev/null
+
 echo "    - roles/bigquery.jobUser a nivel proyecto (permite correr queries)"
 gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
   --member="serviceAccount:${SA_EMAIL}" \
   --role="roles/bigquery.jobUser" >/dev/null
 
+echo "    - roles/aiplatform.user a nivel proyecto (permite invocar Gemini en Vertex AI sin API keys)"
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  --member="serviceAccount:${SA_EMAIL}" \
+  --role="roles/aiplatform.user" >/dev/null
+
 echo "    - SOLO LECTURA (roles/bigquery.dataViewer) sobre ${DATASET_DATA}"
 bq query --use_legacy_sql=false \
-  "GRANT \`roles/bigquery.dataViewer\` ON SCHEMA \`${PROJECT_ID}.${DATASET_DATA}\` TO 'serviceAccount:${SA_EMAIL}'"
+  'GRANT `roles/bigquery.dataViewer` ON SCHEMA `'"${PROJECT_ID}.${DATASET_DATA}"'` TO "serviceAccount:'"${SA_EMAIL}"'"'
 
 echo "    - ESCRITURA/LECTURA (roles/bigquery.dataEditor) SOLO sobre ${DATASET_LOGS}"
 bq query --use_legacy_sql=false \
-  "GRANT \`roles/bigquery.dataEditor\` ON SCHEMA \`${PROJECT_ID}.${DATASET_LOGS}\` TO 'serviceAccount:${SA_EMAIL}'"
+  'GRANT `roles/bigquery.dataEditor` ON SCHEMA `'"${PROJECT_ID}.${DATASET_LOGS}"'` TO "serviceAccount:'"${SA_EMAIL}"'"'
 
 echo ""
 echo "Listo. Si necesitas la clave JSON para probar desde tu PC/Codespaces:"
 echo "  gcloud iam service-accounts keys create bq-sa.json --iam-account=${SA_EMAIL}"
 echo "  cloudshell download bq-sa.json"
 echo ""
-echo "Para desplegar la PWA en Google Cloud Run (sin archivo JSON, usando identidad IAM nativa):"
+echo "Para desplegar la PWA en Google Cloud Run con Vertex AI + BigQuery (CERO API keys estáticas):"
 echo "  gcloud run deploy seguros-horizonte-pwa \\"
 echo "    --source . \\"
 echo "    --region us-central1 \\"
 echo "    --service-account ${SA_EMAIL} \\"
 echo "    --allow-unauthenticated \\"
-echo "    --set-env-vars \"DB_BACKEND=bigquery,GCP_PROJECT_ID=${PROJECT_ID},BIGQUERY_DATASET=${DATASET_DATA},BIGQUERY_LOGS_DATASET=${DATASET_LOGS},GEMINI_MODEL=gemini-3.8-flash,GEMINI_API_KEY=TU_GEMINI_API_KEY,APP_SECRET_KEY=\$(openssl rand -hex 24)\""
+echo "    --memory 512Mi \\"
+echo "    --set-env-vars \"DB_BACKEND=bigquery,USE_VERTEX_AI=true,GCP_PROJECT_ID=${PROJECT_ID},GCP_LOCATION=us-central1,BIGQUERY_DATASET=${DATASET_DATA},BIGQUERY_LOGS_DATASET=${DATASET_LOGS},GEMINI_MODEL=gemini-2.5-flash,APP_SECRET_KEY=\$(openssl rand -hex 24)\""
